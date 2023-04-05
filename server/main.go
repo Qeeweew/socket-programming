@@ -9,7 +9,7 @@ import (
 
 var clientMap = make(map[string]*ClientData)
 
-const ip_port = "127.0.0.1:10001"
+const ip_port = "127.0.0.1:14444"
 const BUFSIZE = 1024
 
 type ClientData struct {
@@ -60,7 +60,7 @@ func (client *ClientData) processMessage(s string) {
 func listen() {
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", ip_port)
 	tcpListener, err := net.ListenTCP("tcp", tcpAddr)
-	if err == nil {
+	if err != nil {
 		fmt.Println("端口被占用")
 		return
 	}
@@ -69,7 +69,7 @@ func listen() {
 		conn, _ := tcpListener.AcceptTCP()
 		client := &ClientData{Conn: conn, mu: sync.Mutex{}}
 		clientMap[conn.RemoteAddr().String()] = client
-		fmt.Printf("connected with %s\n", conn.RemoteAddr().String())
+		fmt.Printf("%s 已连接\n", conn.RemoteAddr().String())
 		go client.receive()
 	}
 }

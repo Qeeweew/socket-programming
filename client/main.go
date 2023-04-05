@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-const ServerAddr = "127.0.0.1:10001"
+const ServerAddr = "127.0.0.1:14444"
 
 var loginName string
 var conn *net.TCPConn
@@ -71,7 +71,7 @@ func receive() {
 		switch command {
 		case "FAIL":
 			fmt.Print("\033[H\033[2J")
-			err = fmt.Errorf("error: %s", msg)
+			fmt.Printf("error: %s", msg)
 		case "RECEIVE_MESSAGE":
 			fmt.Print("\033[H\033[2J")
 			j := strings.Index(msg, ":")
@@ -88,6 +88,7 @@ func main() {
 	conn = conn_
 	if err != nil {
 		fmt.Println("connecting to server FAILED!")
+		return
 	}
 	wg.Add(2)
 	go send()
