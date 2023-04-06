@@ -13,6 +13,16 @@ var clientMap = make(map[string]*ClientData)
 const ip_port = "0.0.0.0:14444"
 const BUFSIZE = 1024
 
+/*
+client 发出的:
+1. LOGIN$name 登陆
+2. SEND$name$msg  发送msg给name用户
+
+server 发出的:
+1. FAIL$msg   操作失败
+2. RECEIVE_MESSAGE$name$msg 需要接受来自name的msg
+*/
+
 type ClientData struct {
 	Addr     string       // 网络地址 ip + port
 	UserName string       // 用户名
@@ -21,7 +31,9 @@ type ClientData struct {
 }
 
 func (client *ClientData) sendMessage(s string) {
+	client.mu.Lock()
 	packet.PacketSend(client.Conn, packet.NewPacket(s))
+	client.mu.Unlock()
 }
 
 func (client *ClientData) processMessage(s string) {
