@@ -82,16 +82,10 @@ func main() {
 			command, msg := s[:i], s[i+1:]
 			switch command {
 			case "FAIL":
-				newWindow := app.NewWindow("Error")
-				label := widget.NewLabel(msg)
-				newWindow.SetContent(container.NewCenter(label))
 				fmt.Printf("\n\u001b[31merror: %s\u001b[0m\n", msg)
 				msgBinding.Append("error: " + msg)
 			case "RECEIVE_MESSAGE":
 				j := strings.Index(msg, "$")
-				newWindow := app.NewWindow(fmt.Sprintf("Received a message from %s", msg[0:j]))
-				label := widget.NewLabel(msg[j+1:])
-				newWindow.SetContent(container.NewCenter(label))
 				fmt.Printf("\n\u001b[32mMessage from %s:\n", msg[0:j])
 				fmt.Print(msg[j+1:])
 				fmt.Print("\u001b[0m")
