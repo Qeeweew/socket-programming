@@ -10,11 +10,8 @@ import (
 	"sync"
 )
 
-const ServerAddr = "127.0.0.1:14444"
+const ServerAddr = "47.99.119.54:14444"
 
-// "47.99.119.54:14444"
-
-var loginName string
 var conn *net.TCPConn
 var wg sync.WaitGroup
 var reader = bufio.NewReader(os.Stdin)
@@ -33,7 +30,7 @@ func send() {
 			fmt.Scanf("%s", &name)
 			err := packet.PacketSend(conn, packet.NewPacket("LOGIN$"+name))
 			if err != nil {
-				break
+				fmt.Printf("err %v", err)
 			}
 		case "send", "s":
 			fmt.Print("请输入好友用户名: ")
@@ -50,7 +47,7 @@ func send() {
 			}
 			err := packet.PacketSend(conn, packet.NewPacket("SEND$"+name+"$"+string(msg)))
 			if err != nil {
-				break
+				fmt.Printf("err %v", err)
 			}
 		case "quit", "q":
 			packet.PacketSend(conn, packet.NewPacket("LOGOUT$"))

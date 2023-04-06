@@ -11,7 +11,6 @@ import (
 var clientMap = make(map[string]*ClientData)
 
 const ip_port = "0.0.0.0:14444"
-const BUFSIZE = 1024
 
 /*
 client 发出的:
