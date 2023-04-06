@@ -72,7 +72,7 @@ func (client *ClientData) processMessage(s string) {
 			client.sendMessage("FAIL$please login first")
 			break
 		}
-		arr := strings.Split(msg, "$")
+		arr := strings.SplitN(msg, "$", 3)
 		nameTo, fileName, msgTo := arr[0], arr[1], arr[2]
 		clientTo, ok := clientMap[nameTo]
 		if ok {
@@ -115,7 +115,10 @@ func (client *ClientData) receive() {
 			break
 		}
 		client.processMessage(string(byteMsg))
-		fmt.Printf("%s -- from: %s\n", string(byteMsg), client.Conn.RemoteAddr().String())
+		fmt.Println(len(byteMsg))
+		if len(byteMsg) < 1000 {
+			fmt.Printf("%s -- from: %s\n", string(byteMsg), client.Conn.RemoteAddr().String())
+		}
 	}
 }
 

@@ -86,7 +86,7 @@ func main() {
 						}
 						full = append(full, b...)
 					}
-					fmt.Printf("%s", string(full))
+					fmt.Printf("%d", len(full))
 					packet.PacketSend(conn, packet.NewPacket("SEND_FILE$"+nameTo+"$"+f.URI().Name()+"$"+string(full)))
 					defer f.Close()
 				}, dialogSendWindow)
@@ -132,7 +132,7 @@ func main() {
 				fmt.Print("\u001b[0m")
 				msgBinding.Append(msg[0:j] + ": " + msg[j+1:])
 			case "RECEIVE_FILE":
-				arr := strings.Split(msg, "$")
+				arr := strings.SplitN(msg, "$", 3)
 				go file_receive(arr[0], arr[1], []byte(arr[2]))
 			case "LOGINSUCCESS":
 				loginEntry.Disable()
