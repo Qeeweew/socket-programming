@@ -5,11 +5,14 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"socket-programming/packet"
 	"strings"
 	"sync"
 )
 
-const ServerAddr = "47.99.119.54:14444"
+const ServerAddr = "127.0.0.1:14444"
+
+// "47.99.119.54:14444"
 
 var loginName string
 var conn *net.TCPConn
@@ -28,7 +31,7 @@ func send() {
 			fmt.Print("请输入用户名: ")
 			var name string
 			fmt.Scanf("%s", &name)
-			_, err := conn.Write([]byte("LOGIN$" + name))
+			err := packet.PacketSend(conn, packet.NewPacket("LOGIN$"+name))
 			if err != nil {
 				break
 			}
@@ -45,12 +48,12 @@ func send() {
 				}
 				msg = append(msg, ch)
 			}
-			_, err := conn.Write(append([]byte("SEND$"+name+":"), msg...))
+			err := packet.PacketSend(conn, packet.NewPacket("SEND$"+name+"$"+string(msg)))
 			if err != nil {
 				break
 			}
 		case "quit", "q":
-			conn.Write(append([]byte("LOGOUT$")))
+			packet.PacketSend(conn, packet.NewPacket("LOGOUT$"))
 			return
 		default:
 			if len(cmd) > 0 {
@@ -62,20 +65,19 @@ func send() {
 
 func receive() {
 	defer wg.Done()
-	buf := make([]byte, 1024)
 	for {
-		len, err := conn.Read(buf)
+		buf, err := packet.PacketReceive(conn)
 		if err != nil {
 			return
 		}
-		s := string(buf[:len])
+		s := string(buf)
 		i := strings.Index(s, "$")
 		command, msg := s[:i], s[i+1:]
 		switch command {
 		case "FAIL":
 			fmt.Printf("\n\u001b[31merror: %s\u001b[0m\n", msg)
 		case "RECEIVE_MESSAGE":
-			j := strings.Index(msg, ":")
+			j := strings.Index(msg, "$")
 			fmt.Printf("\n\u001b[32mMessage from %s:\n", msg[0:j])
 			fmt.Print(msg[j+1:])
 			fmt.Print("\u001b[0m")

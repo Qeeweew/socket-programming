@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"socket-programming/packet"
 	"strings"
 	"sync"
 )
@@ -20,8 +21,7 @@ type ClientData struct {
 }
 
 func (client *ClientData) sendMessage(s string) {
-	fmt.Printf("send to %s %s\n", client.UserName, s)
-	client.Conn.Write([]byte(s))
+	packet.PacketSend(client.Conn, packet.NewPacket(s))
 }
 
 func (client *ClientData) processMessage(s string) {
@@ -34,7 +34,7 @@ func (client *ClientData) processMessage(s string) {
 	switch command {
 	case "LOGIN":
 		name := msg
-		if _, isLogin := clientMap[name]; isLogin {
+		if _, isLogin := clientMap[name]; client.UserName != "" || isLogin {
 			client.sendMessage("FAIL$已登陆")
 			break
 		}
@@ -45,11 +45,11 @@ func (client *ClientData) processMessage(s string) {
 			client.sendMessage("FAIL$未登录")
 			break
 		}
-		i = strings.Index(msg, ":")
+		i = strings.Index(msg, "$")
 		nameTo, msgTo := msg[:i], msg[i+1:]
 		clientTo, ok := clientMap[nameTo]
 		if ok {
-			clientTo.sendMessage(fmt.Sprintf("RECEIVE_MESSAGE$%s:%s", client.UserName, msgTo))
+			clientTo.sendMessage(fmt.Sprintf("RECEIVE_MESSAGE$%s$%s", client.UserName, msgTo))
 			client.sendMessage("SUCCESS$")
 		} else {
 			client.sendMessage(fmt.Sprintf("FAIL$%s is not online", nameTo))
@@ -61,7 +61,6 @@ func (client *ClientData) processMessage(s string) {
 			break
 		}
 	}
-
 }
 
 func listen() {
@@ -83,13 +82,13 @@ func listen() {
 
 func (client *ClientData) receive() {
 	for {
-		byteMsg := make([]byte, BUFSIZE)
-		len, err := client.Conn.Read(byteMsg)
+		byteMsg, err := packet.PacketReceive(client.Conn)
 		if err != nil {
+			fmt.Printf("receive err: %v", err)
 			break
 		}
-		client.processMessage(string(byteMsg[:len]))
-		fmt.Printf("%s -- from: %s\n", string(byteMsg[:len]), client.Conn.RemoteAddr().String())
+		client.processMessage(string(byteMsg))
+		fmt.Printf("%s -- from: %s\n", string(byteMsg), client.Conn.RemoteAddr().String())
 	}
 }
 
