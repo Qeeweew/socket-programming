@@ -49,6 +49,7 @@ func (client *ClientData) processMessage(s string) {
 			client.sendMessage("FAIL$已登陆")
 			break
 		}
+		client.sendMessage("LOGINSUCCESS$")
 		client.UserName = name
 		clientMap[name] = client
 	case "SEND":
