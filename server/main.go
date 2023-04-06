@@ -9,7 +9,7 @@ import (
 
 var clientMap = make(map[string]*ClientData)
 
-const ip_port = "127.0.0.1:14444"
+const ip_port = "0.0.0.0:14444"
 const BUFSIZE = 1024
 
 type ClientData struct {
@@ -30,14 +30,14 @@ func (client *ClientData) processMessage(s string) {
 		client.sendMessage("FAIL")
 		return
 	}
-	command, msg := s[:i], strings.Trim(s[i+1:], "\n\r ")
+	command, msg := s[:i], s[i+1:]
 	switch command {
 	case "LOGIN":
-		if client.UserName != "" {
+		name := msg
+		if _, isLogin := clientMap[name]; isLogin {
 			client.sendMessage("FAIL$已登陆")
 			break
 		}
-		name := msg
 		client.UserName = name
 		clientMap[name] = client
 	case "SEND":
@@ -54,14 +54,21 @@ func (client *ClientData) processMessage(s string) {
 		} else {
 			client.sendMessage(fmt.Sprintf("FAIL$%s is not online", nameTo))
 		}
+	case "LOGOUT":
+		if client.UserName != "" {
+			client.Conn.Close()
+			delete(clientMap, client.UserName)
+			break
+		}
 	}
+
 }
 
 func listen() {
 	tcpAddr, _ := net.ResolveTCPAddr("tcp", ip_port)
 	tcpListener, err := net.ListenTCP("tcp", tcpAddr)
 	if err != nil {
-		fmt.Println("端口被占用")
+		fmt.Printf("%v\n", err)
 		return
 	}
 	fmt.Println("开始监听")
@@ -75,19 +82,13 @@ func listen() {
 }
 
 func (client *ClientData) receive() {
-	defer func() {
-		client.Conn.Close()
-		if client.UserName != "" {
-			delete(clientMap, client.UserName)
-		}
-	}()
 	for {
 		byteMsg := make([]byte, BUFSIZE)
 		len, err := client.Conn.Read(byteMsg)
 		if err != nil {
 			break
 		}
-		go client.processMessage(string(byteMsg[:len]))
+		client.processMessage(string(byteMsg[:len]))
 		fmt.Printf("%s -- from: %s\n", string(byteMsg[:len]), client.Conn.RemoteAddr().String())
 	}
 }

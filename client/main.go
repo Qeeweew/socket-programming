@@ -9,7 +9,7 @@ import (
 	"sync"
 )
 
-const ServerAddr = "127.0.0.1:14444"
+const ServerAddr = "47.99.119.54:14444"
 
 var loginName string
 var conn *net.TCPConn
@@ -22,6 +22,7 @@ func send() {
 		fmt.Print("请输入命令: ")
 		var cmd string
 		fmt.Scanf("%s", &cmd)
+		cmd = strings.Trim(cmd, " \n\r")
 		switch cmd {
 		case "login", "l":
 			fmt.Print("请输入用户名: ")
@@ -39,7 +40,7 @@ func send() {
 			var msg = make([]byte, 0)
 			for {
 				ch, err := reader.ReadByte()
-				if ch == ';' || err != nil {
+				if ch == '#' || err != nil {
 					break
 				}
 				msg = append(msg, ch)
@@ -49,10 +50,12 @@ func send() {
 				break
 			}
 		case "quit", "q":
-			println("exit")
-			break
+			conn.Write(append([]byte("LOGOUT$")))
+			return
 		default:
-			fmt.Printf("未知操作: %s", cmd)
+			if len(cmd) > 0 {
+				fmt.Printf("未知操作: %s", cmd)
+			}
 		}
 	}
 }
@@ -67,16 +70,15 @@ func receive() {
 		}
 		s := string(buf[:len])
 		i := strings.Index(s, "$")
-		command, msg := s[:i], strings.Trim(s[i+1:], "\n\r ")
+		command, msg := s[:i], s[i+1:]
 		switch command {
 		case "FAIL":
-			fmt.Print("\033[H\033[2J")
-			fmt.Printf("error: %s", msg)
+			fmt.Printf("\n\u001b[31merror: %s\u001b[0m\n", msg)
 		case "RECEIVE_MESSAGE":
-			fmt.Print("\033[H\033[2J")
 			j := strings.Index(msg, ":")
-			fmt.Printf("Received a message from %s\n", msg[0:j])
-			fmt.Print(msg[j+1 : 0])
+			fmt.Printf("\n\u001b[32mMessage from %s:\n", msg[0:j])
+			fmt.Print(msg[j+1:])
+			fmt.Print("\u001b[0m")
 		default:
 		}
 	}
