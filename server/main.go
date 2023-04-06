@@ -11,6 +11,7 @@ import (
 var clientMap = make(map[string]*ClientData)
 
 const ip_port = "0.0.0.0:14444"
+const BUFSIZE = 1024
 
 /*
 client 发出的:
@@ -66,9 +67,23 @@ func (client *ClientData) processMessage(s string) {
 		} else {
 			client.sendMessage(fmt.Sprintf("FAIL$%s is not online", nameTo))
 		}
+	case "SEND_FILE":
+		if client.UserName == "" {
+			client.sendMessage("FAIL$please login first")
+			break
+		}
+		arr := strings.Split(msg, "$")
+		nameTo, fileName, msgTo := arr[0], arr[1], arr[2]
+		clientTo, ok := clientMap[nameTo]
+		if ok {
+			clientTo.sendMessage(fmt.Sprintf("RECEIVE_FILE$%s$%s$%s", client.UserName, fileName, msgTo))
+			client.sendMessage("SUCCESS$")
+		} else {
+			client.sendMessage(fmt.Sprintf("FAIL$%s is not online", nameTo))
+		}
 	case "LOGOUT":
+		client.Conn.Close()
 		if client.UserName != "" {
-			client.Conn.Close()
 			delete(clientMap, client.UserName)
 			break
 		}

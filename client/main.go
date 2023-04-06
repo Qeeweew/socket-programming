@@ -13,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -34,6 +35,7 @@ func main() {
 	app := app.New()
 
 	mainWindow := app.NewWindow("client")
+
 	loginEntry := widget.NewEntry()
 	loginEntry.SetPlaceHolder("Enter user name...")
 	sendNameEntry := widget.NewEntry()
@@ -65,11 +67,50 @@ func main() {
 				if err != nil {
 					fmt.Printf("err %v", err)
 				}
-			})),
-		msgLabel,
-	)
+			}),
+			widget.NewButton("Send a file", func() {
+				nameTo := sendNameEntry.Text
+				fmt.Printf("sending file to%s\n", nameTo)
+				dialogSendWindow := app.NewWindow("Send a file")
+				dialogSendWindow.Resize(fyne.NewSize(600, 400))
+				b := make([]byte, 1024)
+				full := make([]byte, 0)
+				send_dialog := dialog.NewFileOpen(func(f fyne.URIReadCloser, err error) {
+					if f == nil {
+						return
+					}
+					for {
+						_, err := f.Read(b)
+						if err != nil {
+							break
+						}
+						full = append(full, b...)
+					}
+					fmt.Printf("%s", string(full))
+					packet.PacketSend(conn, packet.NewPacket("SEND_FILE$"+nameTo+"$"+f.URI().Name()+"$"+string(full)))
+					defer f.Close()
+				}, dialogSendWindow)
+				send_dialog.Show()
+				dialogSendWindow.SetTitle(fmt.Sprintf("sending file to %s", nameTo))
+				dialogSendWindow.Show()
+			}),
+		),
+		msgLabel)
 	mainWindow.SetContent(content)
 	mainWindow.Resize(fyne.NewSize(200, 400))
+
+	file_receive := func(nameFrom string, filename string, data []byte) {
+		fmt.Printf("receiving file from%s", nameFrom)
+		dialogRecvWindow := app.NewWindow("Receive a file")
+		dialogRecvWindow.Resize(fyne.NewSize(600, 400))
+		file := dialog.NewFileSave(func(f fyne.URIWriteCloser, e error) {
+			f.Write(data)
+			defer f.Close()
+		}, dialogRecvWindow)
+		file.Show()
+		dialogRecvWindow.SetTitle(fmt.Sprintf("receiving \"%s\"from %s", filename, nameFrom))
+		dialogRecvWindow.Show()
+	}
 
 	receive := func() {
 		for {
@@ -90,6 +131,9 @@ func main() {
 				fmt.Print(msg[j+1:])
 				fmt.Print("\u001b[0m")
 				msgBinding.Append(msg[0:j] + ": " + msg[j+1:])
+			case "RECEIVE_FILE":
+				arr := strings.Split(msg, "$")
+				go file_receive(arr[0], arr[1], []byte(arr[2]))
 			case "LOGINSUCCESS":
 				loginEntry.Disable()
 			default:
@@ -97,8 +141,10 @@ func main() {
 		}
 	}
 	go receive()
+
 	mainWindow.SetOnClosed(func() {
 		packet.PacketSend(conn, packet.NewPacket("LOGOUT$"))
 	})
+	mainWindow.SetMaster()
 	mainWindow.ShowAndRun()
 }
