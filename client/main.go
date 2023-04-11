@@ -38,6 +38,9 @@ func main() {
 
 	loginEntry := widget.NewEntry()
 	loginEntry.SetPlaceHolder("Enter user name...")
+	passwordEntry := widget.NewPasswordEntry()
+	passwordEntry.SetPlaceHolder("Enter password")
+
 	sendNameEntry := widget.NewEntry()
 	sendNameEntry.SetPlaceHolder("To Whom...")
 	sendMsgEntry := widget.NewMultiLineEntry()
@@ -54,16 +57,18 @@ func main() {
 		container.NewVBox(
 			container.NewHSplit(
 				loginEntry,
-				widget.NewButton("Login", func() {
-					err := packet.PacketSend(conn, packet.NewPacket("LOGIN$"+loginEntry.Text))
-					if err != nil {
-						fmt.Printf("err %v", err)
-					}
-				})),
+				passwordEntry,
+			),
+			widget.NewButton("Login", func() {
+				err := packet.PacketSend(conn, packet.NewPacket(packet.LOGIN, loginEntry.Text+","+passwordEntry.Text))
+				if err != nil {
+					fmt.Printf("err %v", err)
+				}
+			}),
 			sendNameEntry,
 			sendMsgEntry,
 			widget.NewButton("Send", func() {
-				err := packet.PacketSend(conn, packet.NewPacket("SEND$"+sendNameEntry.Text+"$"+sendMsgEntry.Text))
+				err := packet.PacketSend(conn, packet.NewPacket(packet.SEND, sendNameEntry.Text+"$"+sendMsgEntry.Text))
 				if err != nil {
 					fmt.Printf("err %v", err)
 				}
@@ -87,7 +92,7 @@ func main() {
 						full = append(full, b...)
 					}
 					fmt.Printf("%d", len(full))
-					packet.PacketSend(conn, packet.NewPacket("SEND_FILE$"+nameTo+"$"+f.URI().Name()+"$"+string(full)))
+					packet.PacketSend(conn, packet.NewPacket(packet.SEND_FILE, nameTo+"$"+f.URI().Name()+"$"+string(full)))
 					defer f.Close()
 				}, dialogSendWindow)
 				send_dialog.Show()
@@ -114,27 +119,25 @@ func main() {
 
 	receive := func() {
 		for {
-			buf, err := packet.PacketReceive(conn)
+			p, err := packet.PacketReceive(conn)
 			if err != nil {
 				return
 			}
-			s := string(buf)
-			i := strings.Index(s, "$")
-			command, msg := s[:i], s[i+1:]
-			switch command {
-			case "FAIL":
+			msg := string(p.Data)
+			switch p.Type {
+			case packet.FAIL:
 				fmt.Printf("\n\u001b[31merror: %s\u001b[0m\n", msg)
 				msgBinding.Append("error: " + msg)
-			case "RECEIVE_MESSAGE":
+			case packet.RECEIVE_MESSAGE:
 				j := strings.Index(msg, "$")
 				fmt.Printf("\n\u001b[32mMessage from %s:\n", msg[0:j])
 				fmt.Print(msg[j+1:])
 				fmt.Print("\u001b[0m")
 				msgBinding.Append(msg[0:j] + ": " + msg[j+1:])
-			case "RECEIVE_FILE":
+			case packet.RECEIVE_FILE:
 				arr := strings.SplitN(msg, "$", 3)
 				go file_receive(arr[0], arr[1], []byte(arr[2]))
-			case "LOGINSUCCESS":
+			case packet.LOGINSUCCESS:
 				loginEntry.Disable()
 			default:
 			}
@@ -143,7 +146,7 @@ func main() {
 	go receive()
 
 	mainWindow.SetOnClosed(func() {
-		packet.PacketSend(conn, packet.NewPacket("LOGOUT$"))
+		packet.PacketSend(conn, packet.NewPacket(packet.LOGOUT, ""))
 	})
 	mainWindow.SetMaster()
 	mainWindow.ShowAndRun()

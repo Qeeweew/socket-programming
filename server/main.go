@@ -1,14 +1,17 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"net"
+	"os"
 	"socket-programming/packet"
 	"strings"
 	"sync"
 )
 
 var clientMap = make(map[string]*ClientData)
+var passwords = make(map[string]string)
 
 const ip_port = "0.0.0.0:14444"
 const BUFSIZE = 1024
@@ -30,58 +33,63 @@ type ClientData struct {
 	mu       sync.Mutex
 }
 
-func (client *ClientData) sendMessage(s string) {
+func (client *ClientData) sendMessage(type_info byte, s string) {
 	client.mu.Lock()
-	packet.PacketSend(client.Conn, packet.NewPacket(s))
+	packet.PacketSend(client.Conn, packet.NewPacket(type_info, s))
 	client.mu.Unlock()
 }
 
-func (client *ClientData) processMessage(s string) {
-	i := strings.Index(s, "$")
-	if i == -1 {
-		client.sendMessage("FAIL")
-		return
-	}
-	command, msg := s[:i], s[i+1:]
-	switch command {
-	case "LOGIN":
-		name := msg
-		if _, isLogin := clientMap[name]; client.UserName != "" || isLogin {
-			client.sendMessage("FAIL$已登陆")
+func (client *ClientData) processMessage(p *packet.Packet) {
+	msg := string(p.Data)
+	switch p.Type {
+	case packet.LOGIN:
+		i := strings.Index(msg, ",")
+		name, password := msg[0:i], msg[i+1:0]
+		password1, isVaild := passwords[name]
+		if !isVaild {
+			client.sendMessage(packet.FAIL, "No such User")
 			break
 		}
-		client.sendMessage("LOGINSUCCESS$")
+		if password != password1 {
+			client.sendMessage(packet.FAIL, "Wrong password")
+			break
+		}
+		if _, isLogin := clientMap[name]; client.UserName != "" || isLogin {
+			client.sendMessage(packet.FAIL, "Already Login")
+			break
+		}
+		client.sendMessage(packet.LOGINSUCCESS, "")
 		client.UserName = name
 		clientMap[name] = client
-	case "SEND":
+	case packet.SEND:
 		if client.UserName == "" {
-			client.sendMessage("FAIL$未登录")
+			client.sendMessage(packet.FAIL, "Not Login")
 			break
 		}
-		i = strings.Index(msg, "$")
+		i := strings.Index(msg, "$")
 		nameTo, msgTo := msg[:i], msg[i+1:]
 		clientTo, ok := clientMap[nameTo]
 		if ok {
-			clientTo.sendMessage(fmt.Sprintf("RECEIVE_MESSAGE$%s$%s", client.UserName, msgTo))
-			client.sendMessage("SUCCESS$")
+			clientTo.sendMessage(packet.RECEIVE_MESSAGE, fmt.Sprintf("%s$%s", client.UserName, msgTo))
+			client.sendMessage(packet.SUCCESS, "")
 		} else {
-			client.sendMessage(fmt.Sprintf("FAIL$%s is not online", nameTo))
+			client.sendMessage(packet.FAIL, fmt.Sprintf("%s is not online", nameTo))
 		}
-	case "SEND_FILE":
+	case packet.SEND_FILE:
 		if client.UserName == "" {
-			client.sendMessage("FAIL$please login first")
+			client.sendMessage(packet.FAIL, "please login first")
 			break
 		}
 		arr := strings.SplitN(msg, "$", 3)
 		nameTo, fileName, msgTo := arr[0], arr[1], arr[2]
 		clientTo, ok := clientMap[nameTo]
 		if ok {
-			clientTo.sendMessage(fmt.Sprintf("RECEIVE_FILE$%s$%s$%s", client.UserName, fileName, msgTo))
-			client.sendMessage("SUCCESS$")
+			clientTo.sendMessage(packet.RECEIVE_FILE, fmt.Sprintf("%s$%s$%s", client.UserName, fileName, msgTo))
+			client.sendMessage(packet.SUCCESS, "")
 		} else {
-			client.sendMessage(fmt.Sprintf("FAIL$%s is not online", nameTo))
+			client.sendMessage(packet.FAIL, fmt.Sprintf("%s is not online", nameTo))
 		}
-	case "LOGOUT":
+	case packet.LOGOUT:
 		client.Conn.Close()
 		if client.UserName != "" {
 			delete(clientMap, client.UserName)
@@ -109,19 +117,36 @@ func listen() {
 
 func (client *ClientData) receive() {
 	for {
-		byteMsg, err := packet.PacketReceive(client.Conn)
+		recv_packet, err := packet.PacketReceive(client.Conn)
 		if err != nil {
 			fmt.Printf("receive err: %v", err)
 			break
 		}
-		client.processMessage(string(byteMsg))
-		fmt.Println(len(byteMsg))
-		if len(byteMsg) < 1000 {
-			fmt.Printf("%s -- from: %s\n", string(byteMsg), client.Conn.RemoteAddr().String())
+		client.processMessage(&recv_packet)
+		fmt.Println(len(recv_packet.Data))
+		if len(recv_packet.Data) < 1000 {
+			fmt.Printf("%s -- from: %s\n", string(recv_packet.Data), client.Conn.RemoteAddr().String())
 		}
 	}
 }
 
 func main() {
+	file, e := os.Open("passwords.csv")
+	if e != nil {
+		fmt.Println(e)
+		return
+	}
+
+	reader := csv.NewReader(file)
+
+	result, err := reader.ReadAll()
+	if err != nil {
+		fmt.Println("Error: ", err)
+		return
+	}
+	for _, s := range result {
+		passwords[s[0]] = s[1]
+	}
+
 	listen()
 }
