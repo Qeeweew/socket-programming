@@ -2,6 +2,7 @@ package packet
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 )
@@ -32,12 +33,15 @@ func NewPacket(type_info byte, s string) *Packet {
 
 // 封包
 func PacketSend(conn net.Conn, packet *Packet) (err error) {
-	buf := make([]byte, 5+len(packet.Data))
+	buf := make([]byte, 4+packet.Length)
 	binary.BigEndian.PutUint32(buf[0:4], packet.Length)
 	buf[4] = packet.Type
 	copy(buf[5:], packet.Data)
-	// fmt.Printf("send: %s\n", string(buf[4:]))
+	fmt.Printf("send: %d\n", packet.Length)
 	_, err = conn.Write(buf)
+	if err != nil {
+		fmt.Println(err)
+	}
 	return
 }
 

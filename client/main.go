@@ -85,27 +85,27 @@ func main() {
 						return
 					}
 					for {
-						_, err := f.Read(b)
+						n, err := f.Read(b)
 						if err != nil {
 							break
 						}
-						full = append(full, b...)
+						full = append(full, b[:n]...)
 					}
 					fmt.Printf("%d", len(full))
 					packet.PacketSend(conn, packet.NewPacket(packet.SEND_FILE, nameTo+"$"+f.URI().Name()+"$"+string(full)))
 					defer f.Close()
 				}, dialogSendWindow)
 				send_dialog.Show()
-				dialogSendWindow.SetTitle(fmt.Sprintf("sending file to %s", nameTo))
+				dialogSendWindow.SetTitle(fmt.Sprintf("sending file to %s\n", nameTo))
 				dialogSendWindow.Show()
 			}),
 		),
 		msgLabel)
 	mainWindow.SetContent(content)
-	mainWindow.Resize(fyne.NewSize(200, 400))
+	mainWindow.Resize(fyne.NewSize(300, 600))
 
 	file_receive := func(nameFrom string, filename string, data []byte) {
-		fmt.Printf("receiving file from%s", nameFrom)
+		fmt.Printf("receiving file from %s\n", nameFrom)
 		dialogRecvWindow := app.NewWindow("Receive a file")
 		dialogRecvWindow.Resize(fyne.NewSize(600, 400))
 		file := dialog.NewFileSave(func(f fyne.URIWriteCloser, e error) {
@@ -115,6 +115,7 @@ func main() {
 		file.Show()
 		dialogRecvWindow.SetTitle(fmt.Sprintf("receiving \"%s\"from %s", filename, nameFrom))
 		dialogRecvWindow.Show()
+		defer dialogRecvWindow.Close()
 	}
 
 	receive := func() {

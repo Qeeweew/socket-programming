@@ -16,16 +16,6 @@ var passwords = make(map[string]string)
 const ip_port = "0.0.0.0:14444"
 const BUFSIZE = 1024
 
-/*
-client 发出的:
-1. LOGIN$name 登陆
-2. SEND$name$msg  发送msg给name用户
-
-server 发出的:
-1. FAIL$msg   操作失败
-2. RECEIVE_MESSAGE$name$msg 需要接受来自name的msg
-*/
-
 type ClientData struct {
 	Addr     string       // 网络地址 ip + port
 	UserName string       // 用户名
@@ -44,7 +34,7 @@ func (client *ClientData) processMessage(p *packet.Packet) {
 	switch p.Type {
 	case packet.LOGIN:
 		i := strings.Index(msg, ",")
-		name, password := msg[0:i], msg[i+1:0]
+		name, password := msg[:i], msg[i+1:]
 		password1, isVaild := passwords[name]
 		if !isVaild {
 			client.sendMessage(packet.FAIL, "No such User")
@@ -84,6 +74,7 @@ func (client *ClientData) processMessage(p *packet.Packet) {
 		nameTo, fileName, msgTo := arr[0], arr[1], arr[2]
 		clientTo, ok := clientMap[nameTo]
 		if ok {
+			// fmt.Println("???")
 			clientTo.sendMessage(packet.RECEIVE_FILE, fmt.Sprintf("%s$%s$%s", client.UserName, fileName, msgTo))
 			client.sendMessage(packet.SUCCESS, "")
 		} else {
