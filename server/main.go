@@ -100,7 +100,6 @@ func listen() {
 	for {
 		conn, _ := tcpListener.AcceptTCP()
 		client := &ClientData{Conn: conn, mu: sync.Mutex{}}
-		clientMap[conn.RemoteAddr().String()] = client
 		fmt.Printf("%s 已连接\n", conn.RemoteAddr().String())
 		go client.receive()
 	}
