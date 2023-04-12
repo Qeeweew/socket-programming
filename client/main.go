@@ -53,52 +53,66 @@ func main() {
 		func(i binding.DataItem, o fyne.CanvasObject) {
 			o.(*widget.Label).Bind(i.(binding.String))
 		})
+	loginButton :=
+		widget.NewButton("Login", func() {
+			err := packet.PacketSend(conn, packet.NewPacket(packet.LOGIN, loginEntry.Text+","+passwordEntry.Text))
+			if err != nil {
+				fmt.Printf("err %v", err)
+			}
+		})
+	sendButton :=
+		widget.NewButton("Send", func() {
+			err := packet.PacketSend(conn, packet.NewPacket(packet.SEND, sendNameEntry.Text+"$"+sendMsgEntry.Text))
+			if err != nil {
+				fmt.Printf("err %v", err)
+			}
+		})
+	sendFileButton := widget.NewButton("Send a file", func() {
+		nameTo := sendNameEntry.Text
+		fmt.Printf("sending file to %s\n", nameTo)
+		dialogSendWindow := app.NewWindow("")
+		b := make([]byte, 1024)
+		full := make([]byte, 0)
+		send_dialog := dialog.NewFileOpen(func(f fyne.URIReadCloser, err error) {
+			defer dialogSendWindow.Close()
+			if f == nil {
+				return
+			}
+			for {
+				n, err := f.Read(b)
+				if err != nil {
+					break
+				}
+				full = append(full, b[:n]...)
+			}
+			fmt.Printf("%d", len(full))
+			packet.PacketSend(conn, packet.NewPacket(packet.SEND_FILE, nameTo+"$"+f.URI().Name()+"$"+string(full)))
+			f.Close()
+		}, dialogSendWindow)
+		send_dialog.Show()
+		dialogSendWindow.Resize(fyne.NewSize(600, 400))
+		send_dialog.Resize(fyne.NewSize(600, 400))
+		dialogSendWindow.SetTitle(fmt.Sprintf("sending file to %s\n", nameTo))
+		dialogSendWindow.SetFixedSize(true)
+		dialogSendWindow.Show()
+	})
+
+	sendNameEntry.Disable()
+	sendMsgEntry.Disable()
+	sendButton.Disable()
+	sendFileButton.Disable()
+
 	content := container.NewVSplit(
 		container.NewVBox(
 			container.NewHSplit(
 				loginEntry,
 				passwordEntry,
 			),
-			widget.NewButton("Login", func() {
-				err := packet.PacketSend(conn, packet.NewPacket(packet.LOGIN, loginEntry.Text+","+passwordEntry.Text))
-				if err != nil {
-					fmt.Printf("err %v", err)
-				}
-			}),
+			loginButton,
 			sendNameEntry,
 			sendMsgEntry,
-			widget.NewButton("Send", func() {
-				err := packet.PacketSend(conn, packet.NewPacket(packet.SEND, sendNameEntry.Text+"$"+sendMsgEntry.Text))
-				if err != nil {
-					fmt.Printf("err %v", err)
-				}
-			}),
-			widget.NewButton("Send a file", func() {
-				nameTo := sendNameEntry.Text
-				fmt.Printf("sending file to%s\n", nameTo)
-				dialogSendWindow := app.NewWindow("Send a file")
-				dialogSendWindow.Resize(fyne.NewSize(600, 400))
-				b := make([]byte, 1024)
-				full := make([]byte, 0)
-				send_dialog := dialog.NewFileOpen(func(f fyne.URIReadCloser, err error) {
-					if f == nil {
-						return
-					}
-					for {
-						n, err := f.Read(b)
-						if err != nil {
-							break
-						}
-						full = append(full, b[:n]...)
-					}
-					fmt.Printf("%d", len(full))
-					packet.PacketSend(conn, packet.NewPacket(packet.SEND_FILE, nameTo+"$"+f.URI().Name()+"$"+string(full)))
-					defer f.Close()
-				}, dialogSendWindow)
-				send_dialog.Show()
-				dialogSendWindow.SetTitle(fmt.Sprintf("sending file to %s\n", nameTo))
-				dialogSendWindow.Show()
-			}),
+			sendButton,
+			sendFileButton,
 		),
 		msgLabel)
 	mainWindow.SetContent(content)
@@ -107,15 +121,20 @@ func main() {
 	file_receive := func(nameFrom string, filename string, data []byte) {
 		fmt.Printf("receiving file from %s\n", nameFrom)
 		dialogRecvWindow := app.NewWindow("Receive a file")
-		dialogRecvWindow.Resize(fyne.NewSize(600, 400))
 		file := dialog.NewFileSave(func(f fyne.URIWriteCloser, e error) {
+			if f == nil {
+				return
+			}
+			defer dialogRecvWindow.Close()
 			f.Write(data)
-			defer f.Close()
+			f.Close()
 		}, dialogRecvWindow)
 		file.Show()
+		dialogRecvWindow.Resize(fyne.NewSize(600, 400))
+		file.Resize(fyne.NewSize(600, 400))
 		dialogRecvWindow.SetTitle(fmt.Sprintf("receiving \"%s\"from %s", filename, nameFrom))
+		dialogRecvWindow.SetFixedSize(true)
 		dialogRecvWindow.Show()
-		defer dialogRecvWindow.Close()
 	}
 
 	receive := func() {
@@ -140,6 +159,12 @@ func main() {
 				go file_receive(arr[0], arr[1], []byte(arr[2]))
 			case packet.LOGINSUCCESS:
 				loginEntry.Disable()
+				passwordEntry.Disable()
+				loginButton.Disable()
+				sendNameEntry.Enable()
+				sendMsgEntry.Enable()
+				sendButton.Enable()
+				sendFileButton.Enable()
 			default:
 			}
 		}

@@ -37,7 +37,7 @@ func PacketSend(conn net.Conn, packet *Packet) (err error) {
 	binary.BigEndian.PutUint32(buf[0:4], packet.Length)
 	buf[4] = packet.Type
 	copy(buf[5:], packet.Data)
-	fmt.Printf("send: %d\n", packet.Length)
+	// fmt.Printf("send: %d\n", packet.Length)
 	_, err = conn.Write(buf)
 	if err != nil {
 		fmt.Println(err)

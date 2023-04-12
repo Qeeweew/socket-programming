@@ -37,7 +37,7 @@ func (client *ClientData) processMessage(p *packet.Packet) {
 		name, password := msg[:i], msg[i+1:]
 		password1, isVaild := passwords[name]
 		if !isVaild {
-			client.sendMessage(packet.FAIL, "No such User")
+			client.sendMessage(packet.FAIL, "No such user")
 			break
 		}
 		if password != password1 {
@@ -53,7 +53,7 @@ func (client *ClientData) processMessage(p *packet.Packet) {
 		clientMap[name] = client
 	case packet.SEND:
 		if client.UserName == "" {
-			client.sendMessage(packet.FAIL, "Not Login")
+			client.sendMessage(packet.FAIL, "Please login first!")
 			break
 		}
 		i := strings.Index(msg, "$")
@@ -67,7 +67,7 @@ func (client *ClientData) processMessage(p *packet.Packet) {
 		}
 	case packet.SEND_FILE:
 		if client.UserName == "" {
-			client.sendMessage(packet.FAIL, "please login first")
+			client.sendMessage(packet.FAIL, "Please login first!")
 			break
 		}
 		arr := strings.SplitN(msg, "$", 3)
