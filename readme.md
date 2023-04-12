@@ -1,20 +1,22 @@
 # 极简im聊天通讯（课程作业）
 *C/S 模型, 采用纯TCP协议*
 
-## packet定义
-```go
-type Packet struct {
-	Length uint32 // 包长度
-	Data   []byte // 包数据
-}
-```
+## Server 端
+需要在程序目录下提供*passwords.csv*文件，
+-	一行一对账户密码，具体格式为:*username*,*password*
 
-## Data部分
+之后运行即可，若需要可以在源码修改端口
 
-client 发出的报文:
-1. LOGIN$name 登陆
-2. SEND\$name\$msg  发送msg给name用户
+## Client 端
+有GUI,具有如下功能:
+1.	登陆
+2.	发送消息给特定在线用户
+3.	发送文件给特定在线用户
 
-server 发出的报文:
-1. FAIL$msg   操作失败
-2. RECEIVE_MESSAGE\$name\$msg 需要接受来自name的msg
+## 其他
+
+注意点：
+1.	关闭后自动告知服务器登出、无显式登出方式
+2.	对client数量无特殊限制
+3.	传输文件速度极大受限于服务器网络带宽
+4.	GUI不支持中文，可自行对fyne打包
